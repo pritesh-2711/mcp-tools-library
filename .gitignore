@@ -150,6 +150,9 @@ activemq-data/
 # Environments
 .env
 .envrc
+
+# MCP tool runtime outputs
+.mcp-data/
 .venv
 env/
 venv/
