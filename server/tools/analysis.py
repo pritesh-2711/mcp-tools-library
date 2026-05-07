@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import logging
 import os
 import json
 import textwrap
@@ -11,23 +13,56 @@ from mcp.server.fastmcp import FastMCP
 
 from ..config import settings
 
+logger = logging.getLogger(__name__)
+
+_PNG_MAGIC = b"\x89PNG"
+
+
+def _extract_and_validate_charts(result: Any) -> list[str]:
+    """Extract base64-encoded PNG charts from E2B execution results.
+
+    Validates each chart by checking PNG magic bytes before including it.
+    Returns a list of valid base64 PNG strings (without the data URI prefix).
+    """
+    charts: list[str] = []
+    raw_results = getattr(result, "results", None) or []
+    for item in raw_results:
+        png_b64 = getattr(item, "png", None)
+        if not png_b64 or not isinstance(png_b64, str):
+            continue
+        try:
+            decoded = base64.b64decode(png_b64)
+            if decoded[:4] == _PNG_MAGIC:
+                charts.append(png_b64)
+            else:
+                logger.warning("E2B chart failed PNG magic-byte check, skipping")
+        except Exception as exc:
+            logger.warning("E2B chart base64 decode failed: %s", exc)
+    return charts
+
 
 def _result_to_dict(result: Any) -> dict[str, Any]:
+    charts = _extract_and_validate_charts(result)
+
     if hasattr(result, "to_json"):
         raw_json = result.to_json()
         if isinstance(raw_json, str):
             data = json.loads(raw_json)
             if isinstance(data.get("logs"), str):
                 data["logs"] = json.loads(data["logs"])
+            data["charts"] = charts
             return data
+        if isinstance(raw_json, dict):
+            raw_json["charts"] = charts
         return raw_json
-    data: dict[str, Any] = {}
+
+    data: dict[str, Any] = {"charts": charts}
     for attr in ("text", "stdout", "stderr", "error", "results", "logs"):
         if hasattr(result, attr):
             value = getattr(result, attr)
             if value:
                 data[attr] = value
-    return data or {"repr": repr(result)}
+    return data
 
 
 def register_analysis_tools(mcp: FastMCP) -> None:
