@@ -14,6 +14,13 @@ added here without coupling their implementation to the main API process.
 - `web_search`: Tavily-backed web search.
 - `fetch_webpage`: simple readable-text extraction for webpages.
 
+## Shutdown
+
+The server handles `SIGINT` (Ctrl+C) and `SIGTERM` cleanly — a single Ctrl+C
+is enough to stop it. A `try/except KeyboardInterrupt` around `mcp.run()` and
+`signal.signal` handlers on both signals ensure the event loop exits on the
+first interrupt rather than requiring multiple presses.
+
 ## Local Development
 
 ```bash
@@ -47,8 +54,20 @@ the CSV into its own filesystem and executes the supplied code there.
 
 This keeps EDA isolated from the app server while still allowing pandas,
 matplotlib, scipy, sklearn, and similar packages to be used in the sandbox
-environment. The current version returns execution output; artifact capture can
-be added next once we settle the expected UX for plots and generated files.
+environment.
+
+### Chart output
+
+When the Python code calls `plt.show()`, the sandbox captures the rendered plot
+as a base64-encoded PNG and returns it in the `charts` key of the tool response.
+The application backend validates each image against the PNG magic bytes
+(`\x89PNG`) before passing it to the frontend.
+
+**Important:** always use `plt.show()` — never `plt.savefig()`. The sandbox
+returns display output only; filesystem writes are not returned to the caller.
+
+Use `plt.figure(figsize=(8, 5))` as the standard figure size to keep chart
+dimensions consistent across responses.
 
 ## RaV-IDP Notes
 
