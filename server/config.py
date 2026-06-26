@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     mcp_server_name: str = "mcp-tools-library"
     mcp_transport: Literal["stdio", "sse", "streamable-http"] = "stdio"
+    mcp_host: str = "127.0.0.1"
+    mcp_port: int = 8001
 
     tavily_api_key: str = ""
 

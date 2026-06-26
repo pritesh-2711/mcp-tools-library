@@ -17,7 +17,13 @@ signal.signal(signal.SIGTERM, _handle_shutdown)
 
 
 if __name__ == "__main__":
-    print("Starting MCP server...")
+    if settings.mcp_transport == "stdio":
+        print("Starting MCP server over stdio...")
+    else:
+        print(
+            f"Starting MCP server over {settings.mcp_transport} "
+            f"on {settings.mcp_host}:{settings.mcp_port}..."
+        )
     try:
         mcp.run(transport=settings.mcp_transport)
     except KeyboardInterrupt:
